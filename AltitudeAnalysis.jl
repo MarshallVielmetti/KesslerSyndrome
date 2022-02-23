@@ -167,7 +167,7 @@ function doDebrisOnlyInclinationAnalysis()
     @show size(bindata)
 
     plot(bindata[:, 1], bindata[:, 2], seriestype = :scatter, markersize = bindata[:, 3])
-    png("Orbit Inclination x Altitude Graph")
+    png("DEBRIS Orbit Inclination x Altitude Graph")
     # histogram2d(m[:, 1], m[:, 2], bins = (100:10:2500, 0:1:130))
     # return altitudes
 end
