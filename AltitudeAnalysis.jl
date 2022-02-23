@@ -249,15 +249,74 @@ function doProportionDebrisByAltitude()
     popat!(bins_arr, 1)
 
     proportions = DEB_binned.weights ./ (DEB_binned.weights .+ NOD_binned.weights)
-    plot(bins_arr, proportions, color = "black", legend = false)
+    plot(bins_arr, proportions, color = "black", legend = false, ylims = (0, 1))
 
     title!("Proportion of Objects Classified as Debris by Altitude")
     xlabel!(L"Altitude ($km$)")
+    # xlims!(0, 1)
     ylabel!("Proportion of Objects")
 
     png("Figures/PNG/Comb - Proportion Debris Objects")
     savefig("Figures/SVG/Comb - Proportion Debris Objects.svg")
 
+end
+
+function doCountDebrisNonDebrisComparisonByAltitude()
+    tles = read_tle("TLEData.txt")
+
+    tles_DEBRIS = filter(e -> occursin("DEB", e.name), tles) #Debris
+    tles_NOD = filter(e -> !occursin("DEB", e.name), tles)  # Not Debris
+
+    DEB_altitudes = getTleAltitude.(tles_DEBRIS)
+    NOD_altitudes = getTleAltitude.(tles_NOD)
+
+    filter!((x) -> x .< 2500 && x .> 100, DEB_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, NOD_altitudes)
+
+    bins = (0:50:2500)
+
+    DEB_binned = fit(Histogram, DEB_altitudes, bins, closed = :right)
+    NOD_binned = fit(Histogram, NOD_altitudes, bins, closed = :right)
+
+    bins_arr = collect(bins)
+    popat!(bins_arr, 1)
+
+    DEB_ADJ = DEB_binned.weights
+    NONF = NOD_binned.weights .* 0.35 #Non functional satellites
+    NOD_ADJ = NOD_binned.weights .* (1 - 0.35) #Functional satellites
+
+    VALS = [DEB_ADJ NONF NOD_ADJ]
+
+    plot(bins_arr, VALS, color = ["darkred" "green" "lightblue"], legend = true, label = ["Debris" "Non-Functional Satellites" "Functional Satellites"])
+
+    title!("Counts of Objects By Debris Status")
+    xlabel!(L"Altitude ($km$)")
+    # xlims!(0, 1)
+    ylabel!("Count of Objects")
+
+    png("Figures/PNG/Comb - Count of Objects By Debris Status")
+    savefig("Figures/SVG/Comb - Count of Objects By Debris Status.svg")
+end
+
+
+function buildAllFigures()
+    global eop = get_iers_eop()
+
+    # The DCM (Direction Cosine Matrix) that rotates TEME into alignment with ITRF
+    global D_ITRF_TEME = rECItoECEF(TEME(), ITRF(), DatetoJD(2022, 1, 1, 0, 0, 0), eop)
+
+
+    doInclinationAnalysis()
+
+    doDebrisOnlyInclinationAnalysis()
+
+    doDebrisAltitudeBinAnalysis()
+
+    doDebrisSpacialDensityAnalysis()
+
+    doProportionDebrisByAltitude()
+
+    doCountDebrisNonDebrisComparisonByAltitude()
 end
 
 doInclinationAnalysis()
@@ -269,6 +328,8 @@ doDebrisAltitudeBinAnalysis()
 doDebrisSpacialDensityAnalysis()
 
 doProportionDebrisByAltitude()
+
+doCountDebrisNonDebrisComparisonByAltitude()
 
 getStatistics()
 
