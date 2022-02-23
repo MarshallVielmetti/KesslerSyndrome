@@ -13,11 +13,6 @@ global D_ITRF_TEME = rECItoECEF(TEME(), ITRF(), DatetoJD(2022, 1, 1, 0, 0, 0), e
 function runAnalysis()
     tles = read_tle("TLEData.txt")
 
-    # Random sample of 3000 TLEs
-    ids = floor.(rand((1:length(tles)), 3000))
-
-    rand_tles = [tles[x] for (x) in ids]
-
     altitudes = getTleAltitude.(tles)
     filter!((x) -> x .< 2500 && x .> 100, altitudes)
 
@@ -180,9 +175,102 @@ function doDebrisOnlyInclinationAnalysis()
     # return altitudes
 end
 
+function doDebrisAltitudeBinAnalysis()
+    tles = read_tle("TLEData.txt")
+
+    filter!(e -> occursin("DEB", e.name), tles)
+
+    altitudes = getTleAltitude.(tles)
+    filter!((x) -> x .< 2500 && x .> 100, altitudes)
+
+    histogram(altitudes, bins = range(0, step = 50, stop = 2500), label = "Tracked Objects", title = "Proportion of Space Debris by Orbital Altitude", color = "darkred", normalize = true)
+    xlabel!("Altitude (km)")
+    ylabel!("Proportion of Debris")
+
+    png("Figures/PNG/Debris - Proportion by Altitude")
+    savefig("Figures/SVG/Debris - Proportion by Altitude.svg")
+
+end
+
+function doDebrisSpacialDensityAnalysis()
+    tles = read_tle("TLEData.txt")
+
+    filter!(e -> occursin("DEB", e.name), tles)
+
+    altitudes = getTleAltitude.(tles)
+    filter!((x) -> x .< 2500 && x .> 100, altitudes)
+
+    bins = 150:25:2500
+
+    h = fit(Histogram, altitudes, bins)
+
+    bins = collect(bins)
+    popat!(bins, 1)
+
+    densities = getSphereDensity.(bins, h.weights)
+
+    plot(bins, densities, color = "black", label = "Spatial Density", yscale = :log10, ylims = (10E-10, 10E-4))
+    title!("Spatial Density of Debris by Altitude")
+    xlabel!(L"Altitude ($km$)")
+    ylabel!(L"Spatial Density ($No. / Km^3$)")
+
+    png("Figures/PNG/Debris - Spatial Density")
+    savefig("Figures/SVG/Debris - Spatial Density.svg")
+end
+
+function getStatistics()
+    tles = read_tle("TLEData.txt")
+
+    @show length(tles)
+
+    filter!(e -> occursin("DEB", e.name), tles)
+
+    @show length(tles)
+end
+
+function doProportionDebrisByAltitude()
+    tles = read_tle("TLEData.txt")
+
+    tles_DEBRIS = filter(e -> occursin("DEB", e.name), tles) #Debris
+    tles_NOD = filter(e -> !occursin("DEB", e.name), tles)  # Not Debris
+
+    DEB_altitudes = getTleAltitude.(tles_DEBRIS)
+    NOD_altitudes = getTleAltitude.(tles_NOD)
+
+    filter!((x) -> x .< 2500 && x .> 100, DEB_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, NOD_altitudes)
+
+    bins = (0:50:2500)
+
+    DEB_binned = fit(Histogram, DEB_altitudes, bins, closed = :right)
+    NOD_binned = fit(Histogram, NOD_altitudes, bins, closed = :right)
+
+    bins_arr = collect(bins)
+    popat!(bins_arr, 1)
+
+    proportions = DEB_binned.weights ./ (DEB_binned.weights .+ NOD_binned.weights)
+    plot(bins_arr, proportions, color = "black", legend = false)
+
+    title!("Proportion of Objects Classified as Debris by Altitude")
+    xlabel!(L"Altitude ($km$)")
+    ylabel!("Proportion of Objects")
+
+    png("Figures/PNG/Comb - Proportion Debris Objects")
+    savefig("Figures/SVG/Comb - Proportion Debris Objects.svg")
+
+end
+
 doInclinationAnalysis()
 
 doDebrisOnlyInclinationAnalysis()
+
+doDebrisAltitudeBinAnalysis()
+
+doDebrisSpacialDensityAnalysis()
+
+doProportionDebrisByAltitude()
+
+getStatistics()
 
 plotlyjs()
 
