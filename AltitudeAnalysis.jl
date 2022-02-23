@@ -128,7 +128,57 @@ function doInclinationAnalysis()
     # return altitudes
 end
 
+#Main driver function for inclination analysis for only deb objects
+function doDebrisOnlyInclinationAnalysis()
+    # Plot relative densities in altitude by inclination - 2D histogram
+    # Using 1km and 1 degree bins
+    tles = read_tle("TLEData.txt")
+
+    # @show fieldnames(typeof(tles[1]))
+    # @show tles[1].name
+    # @show occursin("Deb", tles[1].name)
+
+    filter!(e -> occursin("DEB", e.name), tles)
+
+    # m = matrix [altitude, inclination]
+    m = getTleAltitudeInclination.(tles)
+
+    m = mapreduce(permutedims, vcat, m)
+
+    m = m[(m[:, 1].<2500).&(m[:, 1].>100), :]
+
+    altitudes = m[:, 1]
+    inclinations = m[:, 2]
+
+    # weights array altitudes by inc
+    d = fit(Histogram, (altitudes, inclinations), ((100:10:2500, 0:1:130)), closed = :right)
+
+    bindata = zeros(1, 3)
+
+    for alt in 1:size(d.weights)[1]
+        for incl in 1:size(d.weights)[2]
+            if d.weights[alt, incl] > 0
+                bindata = [bindata; [alt * 10 incl d.weights[alt, incl]]]
+            end
+        end
+    end
+    @show size(bindata)
+
+    bindata = bindata[2:end, :]
+
+    bindata[:, 3] = log.(bindata[:, 3])
+
+    @show size(bindata)
+
+    plot(bindata[:, 1], bindata[:, 2], seriestype = :scatter, markersize = bindata[:, 3])
+    png("Orbit Inclination x Altitude Graph")
+    # histogram2d(m[:, 1], m[:, 2], bins = (100:10:2500, 0:1:130))
+    # return altitudes
+end
+
 doInclinationAnalysis()
+
+doDebrisOnlyInclinationAnalysis()
 
 plotlyjs()
 
