@@ -1,5 +1,4 @@
 {
   "editor.formatOnSave": true,
-  "jupyter.jupyterServerType": "local",
-  "julia.environmentPath": "c:\\Users\\binkm\\OneDrive\\Documents\\REPOSITORIES\\KesslerSyndrome"
+  "jupyter.jupyterServerType": "local"
 }
