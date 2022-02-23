@@ -118,8 +118,12 @@ function doInclinationAnalysis()
 
     @show size(bindata)
 
-    plot(bindata[:, 1], bindata[:, 2], seriestype = :scatter, markersize = bindata[:, 3])
-    png("Orbit Inclination x Altitude Graph")
+    plot(bindata[:, 1], bindata[:, 2], seriestype = :scatter, markersize = bindata[:, 3], color = "lightblue", legend = false)
+    title!("Altitude by Orbital Inclination, Count of Objects")
+    xlabel!("Altitude (10km Bins)")
+    ylabel!("Inclination, 1° Bins")
+    # png("Altitude by Orbital Inclination, Count of Objects")
+    savefig("Altitude by Orbital Inclination, Count of Objects.svg")
     # histogram2d(m[:, 1], m[:, 2], bins = (100:10:2500, 0:1:130))
     # return altitudes
 end
