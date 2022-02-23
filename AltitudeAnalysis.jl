@@ -70,7 +70,7 @@ end
 
 function getSphereDensity(radius, count)
     outerVolume = 4 / 3 * π * radius^3
-    innerVolume = 4 / 3 * pi * (radius - 5)^3
+    innerVolume = 4 / 3 * pi * (radius - 0.005)^3
 
     sliceVolume = outerVolume - innerVolume
 
@@ -299,9 +299,60 @@ function doCountDebrisNonDebrisComparisonByAltitude()
 end
 
 function calculateBandedCollisionFrequency()
+    # Calculate spatial density of all bands with all objects
+    # Calculate collision frequency by band
 
+    tles = read_tle("TLEData.txt")
+
+    tles_DEBRIS = filter(e -> occursin("DEB", e.name), tles) #Debris
+    tles_NOD = filter(e -> !occursin("DEB", e.name), tles)  # Not Debris
+
+    ALL_altitudes = getTleAltitude.(tles)
+    DEB_altitudes = getTleAltitude.(tles_DEBRIS)
+    NOD_altitudes = getTleAltitude.(tles_NOD)
+
+    filter!((x) -> x .< 2500 && x .> 100, ALL_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, DEB_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, NOD_altitudes)
+
+
+    sliceWidth = 100
+    bins = (0:sliceWidth:2500)
+
+    ALL_binned = fit(Histogram, ALL_altitudes, bins, closed = :right)
+    DEB_binned = fit(Histogram, DEB_altitudes, bins, closed = :right)
+    NOD_binned = fit(Histogram, NOD_altitudes, bins, closed = :right)
+
+    bins_arr = collect(bins)
+    popat!(bins_arr, 1)
+
+    ALL = ALL_binned.weights
+
+    DEB_ADJ = DEB_binned.weights
+    NONF = NOD_binned.weights .* 0.35 #Non functional satellites
+    NOD_ADJ = NOD_binned.weights .* (1 - 0.35) #Functional satellites
+
+
+    ALL_DENSITY = getSphereDensity.(bins_arr, ALL)
+    DEB_ADJ_DENSITY = getSphereDensity.(bins_arr, DEB_ADJ)
+    NONF_ADJ_DENSITY = getSphereDensity.(bins_arr, NONF)
+    NOD_ADJ_DENSITY = getSphereDensity.(bins_arr, NOD_ADJ)
+
+    Acc_DEB = 0.5 # Estimate
+    Acc_SAT = 4 #Kessler
+    Vs = 7 #Kessler
+
+    CF_ALL = ALL_DENSITY .^ 2 .* Acc_SAT .* Vs .* ((4 / 3 * π) .* (bins_arr .^ 3) .- (bins_arr .- sliceWidth) .^ 3)
+
+    @show sum(CF_ALL) / (4 / 3 * π * (2500^3))
+
+    plot(bins_arr, CF_ALL)
+
+    # Probability of Debris - Nonf collision, by altitude band
+    # Probability of Nonf - Nonf collision, by altitude band
 end
 
+calculateBandedCollisionFrequency()
 
 function buildAllFigures()
     global eop = get_iers_eop()
@@ -321,6 +372,8 @@ function buildAllFigures()
     doProportionDebrisByAltitude()
 
     doCountDebrisNonDebrisComparisonByAltitude()
+
+    calculateBandedCollisionFrequency()
 end
 
 doInclinationAnalysis()
@@ -334,6 +387,8 @@ doDebrisSpacialDensityAnalysis()
 doProportionDebrisByAltitude()
 
 doCountDebrisNonDebrisComparisonByAltitude()
+
+calculateBandedCollisionFrequency()
 
 getStatistics()
 
