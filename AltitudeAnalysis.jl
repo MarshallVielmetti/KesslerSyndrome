@@ -298,6 +298,10 @@ function doCountDebrisNonDebrisComparisonByAltitude()
     savefig("Figures/SVG/Comb - Count of Objects By Debris Status.svg")
 end
 
+function calculateBandedCollisionFrequency()
+
+end
+
 
 function buildAllFigures()
     global eop = get_iers_eop()
@@ -333,11 +337,5 @@ doCountDebrisNonDebrisComparisonByAltitude()
 
 getStatistics()
 
-plotlyjs()
 
-altitudes = runAnalysis()
-doVisualization(altitudes)
-doSpatialDensityCalculations(altitudes)
-
-
-png("Spatial Density")
+# buildAllFigures()
