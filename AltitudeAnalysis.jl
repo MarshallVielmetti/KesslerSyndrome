@@ -316,7 +316,7 @@ function calculateBandedCollisionFrequency()
     filter!((x) -> x .< 2500 && x .> 100, NOD_altitudes)
 
 
-    sliceWidth = 100
+    sliceWidth = 3
     bins = (0:sliceWidth:2500)
 
     ALL_binned = fit(Histogram, ALL_altitudes, bins, closed = :right)
@@ -342,17 +342,205 @@ function calculateBandedCollisionFrequency()
     Acc_SAT = 4 #Kessler
     Vs = 7 #Kessler
 
-    CF_ALL = ALL_DENSITY .^ 2 .* Acc_SAT .* Vs .* ((4 / 3 * π) .* (bins_arr .^ 3) .- (bins_arr .- sliceWidth) .^ 3)
+    # CF_ALL = ALL_DENSITY .^ 2 .* Acc_SAT .* Vs .* 
 
-    @show sum(CF_ALL) / (4 / 3 * π * (2500^3))
+    # @show sum(CF_ALL)
 
-    plot(bins_arr, CF_ALL)
+    CF_ALL = 0.5 .* ALL_DENSITY .^ 2 .* Acc_SAT .* Vs .* ((4 / 3 * π) .* ((bins_arr .^ 3) .- (bins_arr .- sliceWidth) .^ 3))
 
-    # Probability of Debris - Nonf collision, by altitude band
-    # Probability of Nonf - Nonf collision, by altitude band
+    @show sum(CF_ALL)
+
+    # @show sum(CF_ALL) / (4 / 3 * π * (2500^3))
+
+    plot(bins_arr, CF_ALL, yscale = :log10, ylims = (10E-9, 10E-1), color = "darkred")
+
+    title!("Rate of Collisions Per Year by Altitude")
+    xlabel!(L"Altitude ($km$)")
+    # xlims!(0, 1)
+    ylabel!("Rate of Collisions")
+
+    png("Figures/PNG/Comb - Rate of Collisions by Altitude")
+    savefig("Figures/SVG/Comb - Rate of Collisions by Altitude.svg")
 end
 
 calculateBandedCollisionFrequency()
+# Probability of Debris - Nonf collision, by altitude band
+function calculateBandedCollisionFrequencyDebToNonf()
+    # Calculate spatial density of all bands with all objects
+    # Calculate collision frequency by band
+
+    tles = read_tle("TLEData.txt")
+
+    tles_DEBRIS = filter(e -> occursin("DEB", e.name), tles) #Debris
+    tles_NOD = filter(e -> !occursin("DEB", e.name), tles)  # Not Debris
+
+    ALL_altitudes = getTleAltitude.(tles)
+    DEB_altitudes = getTleAltitude.(tles_DEBRIS)
+    NOD_altitudes = getTleAltitude.(tles_NOD)
+
+    filter!((x) -> x .< 2500 && x .> 100, ALL_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, DEB_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, NOD_altitudes)
+
+
+    sliceWidth = 3
+    bins = (0:sliceWidth:2500)
+
+    ALL_binned = fit(Histogram, ALL_altitudes, bins, closed = :right)
+    DEB_binned = fit(Histogram, DEB_altitudes, bins, closed = :right)
+    NOD_binned = fit(Histogram, NOD_altitudes, bins, closed = :right)
+
+    bins_arr = collect(bins)
+    popat!(bins_arr, 1)
+
+    ALL = ALL_binned.weights
+
+    DEB_ADJ = DEB_binned.weights
+    NONF = NOD_binned.weights .* 0.35 #Non functional satellites
+    NOD_ADJ = NOD_binned.weights .* (1 - 0.35) #Functional satellites
+
+
+    ALL_DENSITY = getSphereDensity.(bins_arr, ALL)
+    DEB_ADJ_DENSITY = getSphereDensity.(bins_arr, DEB_ADJ)
+    NONF_ADJ_DENSITY = getSphereDensity.(bins_arr, NONF)
+    NOD_ADJ_DENSITY = getSphereDensity.(bins_arr, NOD_ADJ)
+
+    Acc_DEB = 0.5 # Estimate
+    Acc_SAT = 4 #Kessler
+    Vs = 7 #Kessler
+
+    # CF_ALL = ALL_DENSITY .^ 2 .* Acc_SAT .* Vs .* 
+
+    # @show sum(CF_ALL)
+
+    CF_DEB = 0.5 .* DEB_ADJ_DENSITY .^ 2 .* Acc_SAT .* Vs .* ((4 / 3 * π) .* ((bins_arr .^ 3) .- (bins_arr .- sliceWidth) .^ 3))
+
+    CF_DEB ./ DEB_ADJ .* NONF # Scale to be collisions between nonf and deb rather than between deb
+
+    @show sum(CF_DEB)
+
+    # @show sum(CF_ALL) / (4 / 3 * π * (2500^3))
+
+    plot(bins_arr, CF_DEB, yscale = :log10, ylims = (10E-9, 10E-1), legend = false, color = "darkred")
+
+    title!("Rate of Collisions Per Year by Altitude, \n Debris to Nonfunctional Satellites")
+    xlabel!(L"Altitude ($km$)")
+    # xlims!(0, 1)
+    ylabel!("Rate of Collisions")
+
+    png("Figures/PNG/DEBTONONF - Rate of Collisions by Altitude")
+    savefig("Figures/SVG/DEBTONONF - Rate of Collisions by Altitude.svg")
+end
+
+
+calculateBandedCollisionFrequencyDebToNonf()
+
+#Probability of Nonf - Nonf collision, by altitude band
+function calculateBandedCollisionFrequencyNonftoNonf()
+    # Calculate spatial density of all bands with all objects
+    # Calculate collision frequency by band
+
+    tles = read_tle("TLEData.txt")
+
+    tles_DEBRIS = filter(e -> occursin("DEB", e.name), tles) #Debris
+    tles_NOD = filter(e -> !occursin("DEB", e.name), tles)  # Not Debris
+
+    ALL_altitudes = getTleAltitude.(tles)
+    DEB_altitudes = getTleAltitude.(tles_DEBRIS)
+    NOD_altitudes = getTleAltitude.(tles_NOD)
+
+    filter!((x) -> x .< 2500 && x .> 100, ALL_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, DEB_altitudes)
+    filter!((x) -> x .< 2500 && x .> 100, NOD_altitudes)
+
+
+    sliceWidth = 3
+    bins = (0:sliceWidth:2500)
+
+    ALL_binned = fit(Histogram, ALL_altitudes, bins, closed = :right)
+    DEB_binned = fit(Histogram, DEB_altitudes, bins, closed = :right)
+    NOD_binned = fit(Histogram, NOD_altitudes, bins, closed = :right)
+
+    bins_arr = collect(bins)
+    popat!(bins_arr, 1)
+
+    ALL = ALL_binned.weights
+
+    DEB_ADJ = DEB_binned.weights
+    NONF = NOD_binned.weights .* 0.35 #Non functional satellites
+    NOD_ADJ = NOD_binned.weights .* (1 - 0.35) #Functional satellites
+
+
+    ALL_DENSITY = getSphereDensity.(bins_arr, ALL)
+    DEB_ADJ_DENSITY = getSphereDensity.(bins_arr, DEB_ADJ)
+    NONF_ADJ_DENSITY = getSphereDensity.(bins_arr, NONF)
+    NOD_ADJ_DENSITY = getSphereDensity.(bins_arr, NOD_ADJ)
+
+    Acc_DEB = 0.5 # Estimate
+    Acc_SAT = 4 #Kessler
+    Vs = 7 #Kessler
+
+    CF_NONF = 0.5 .* NONF_ADJ_DENSITY .^ 2 .* Acc_SAT .* Vs .* ((4 / 3 * π) .* ((bins_arr .^ 3) .- (bins_arr .- sliceWidth) .^ 3))
+
+    @show sum(CF_NONF)
+
+    plot(bins_arr, CF_NONF, yscale = :log10, ylims = (10E-10, 10E-2), legend = false, color = "darkred")
+
+    title!("Rate of Collisions Per Year by Altitude, \n Non Functional Satellites")
+    xlabel!(L"Altitude ($km$)")
+    # xlims!(0, 1)
+    ylabel!("Rate of Collisions")
+
+    png("Figures/PNG/NONF - Rate of Collisions by Altitude")
+    savefig("Figures/SVG/NONF - Rate of Collisions by Altitude.svg")
+end
+
+calculateBandedCollisionFrequencyNonftoNonf()
+
+function doCalculateRunawayThreshold()
+    tles = read_tle("TLEData.txt")
+
+    ALL_altitudes = getTleAltitude.(tles)
+
+    filter!((x) -> x .< 2500 && x .> 100, ALL_altitudes)
+
+    bins = collect(0:50:2500)
+
+    ALL_binned = fit(Histogram, ALL_altitudes, bins, closed = :right)
+
+    CUMULATIVE = cumsum(reverse(ALL_binned.weights))
+
+    popat!(bins, 1)
+
+
+    Re = 6371 # radius of the earth, km
+    G = 6.673 * 10^-11 # Gravitational constant
+    Me = 5.972 * 10^24 # Mass of earth, Kg
+    Cd = 2.2
+    W = 1.5
+
+    mA = 125 # Average mass over area - given by Kessler
+    V = 7.5 # Avg. Relative veloctiy, km/sec, given by Kessler
+    σf = 14
+
+    # rNi_arr = (4 .* π .* (Re .+ bins) .^ 3 .* .√((G + Me) ./ (Re .+ bins)) .* expatmosphere.(bins .* 1000) .* Cd) ./ (CUMULATIVE .* W .* mA .* V .* σf)
+    rNi_arr = (4 .* π .* (Re .+ bins) .^ 3 .* .√((G + Me) ./ (Re .+ bins)) .* 10^-11 .* Cd) ./ (CUMULATIVE .* W .* mA .* V .* σf)
+
+    @show rNi_arr
+
+    plot(bins, [rNi_arr ALL_binned.weights], labels = ["Critical Threshold" "Count of Objects"], color = ["darkred" "blue"])
+
+    title!("Debris Population and Critical Threshold \n by Altitude")
+    xlabel!(L"Altitude ($km$)")
+    xlims!(100, 2500)
+    ylabel!("Number of Debris Objects")
+
+    png("Figures/PNG/COMB - Critical Threshold")
+    savefig("Figures/SVG/COMB - Critical Threshold.svg")
+end
+
+
+doCalculateRunawayThreshold()
 
 function buildAllFigures()
     global eop = get_iers_eop()
@@ -374,23 +562,10 @@ function buildAllFigures()
     doCountDebrisNonDebrisComparisonByAltitude()
 
     calculateBandedCollisionFrequency()
+
+    calculateBandedCollisionFrequencyDebToNonf()
+
+    calculateBandedCollisionFrequencyNonftoNonf()
 end
-
-doInclinationAnalysis()
-
-doDebrisOnlyInclinationAnalysis()
-
-doDebrisAltitudeBinAnalysis()
-
-doDebrisSpacialDensityAnalysis()
-
-doProportionDebrisByAltitude()
-
-doCountDebrisNonDebrisComparisonByAltitude()
-
-calculateBandedCollisionFrequency()
-
-getStatistics()
-
 
 # buildAllFigures()
