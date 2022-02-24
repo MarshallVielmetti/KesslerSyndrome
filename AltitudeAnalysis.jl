@@ -484,7 +484,7 @@ function calculateBandedCollisionFrequencyNonftoNonf()
 
     @show sum(CF_NONF)
 
-    plot(bins_arr, CF_NONF, yscale = :log10, ylims = (10E-10, 10E-2), legend = false, color = "darkred")
+    plot(bins_arr, CF_NONF, yscale = :log10, ylims = (10E-3, 10E2), legend = false, color = "darkred")
 
     title!("Rate of Collisions Per Year by Altitude, \n Non Functional Satellites")
     xlabel!(L"Altitude ($km$)")
@@ -542,6 +542,12 @@ end
 
 doCalculateRunawayThreshold()
 
+function doDebrisRankingModel()
+    tles = read_tle("TLEData.txt")
+
+    getTleAltitude.(tles)
+end
+
 function buildAllFigures()
     global eop = get_iers_eop()
 
@@ -568,4 +574,4 @@ function buildAllFigures()
     calculateBandedCollisionFrequencyNonftoNonf()
 end
 
-# buildAllFigures()
+buildAllFigures()
